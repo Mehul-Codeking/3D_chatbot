@@ -1,46 +1,17 @@
 import streamlit as st
 import os
-import google.generativeai as genai
 import pyttsx3
 import speech_recognition as sr
+import utils as u
+from PIL import Image
 from dotenv import load_dotenv
+import streamlit.components.v1 as components
 
-# Load environment variables (assuming you have a `.env` file)
+# Load environment variables
 load_dotenv()
 
-# Configure Generative AI with the API key
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-
-# Function to load GEMINI Pro Model and get response
-def get_gemini_response(question):
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(question)
-    return response.text.replace("*", "")  # Remove asterisks before returning
-
-# Function to convert text to speech (without asterisks)
-def text_to_speech(text):
-    engine = pyttsx3.init()  # Initialize pyttsx3 engine
-    engine.say(text.replace("*", ""))  # Remove asterisks before speaking
-    engine.runAndWait()
-
-# Function to transcribe speech to text
-def speech_to_text():
-    r = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.write("Listening...")
-        audio = r.listen(source)
-    try:
-        user_input = r.recognize_google(audio)
-        return user_input
-    except sr.UnknownValueError:
-        st.warning("Sorry, I could not understand what you said.")
-        return ""
-    except sr.RequestError as e:
-        st.error(f"Could not request results from Google Speech Recognition service; {e}")
-        return ""
-
 # Initialize Streamlit app configuration
-st.set_page_config(page_title="Chatbot Demo")
+st.set_page_config(page_title="Chatbot Demo", layout='wide')
 
 # Custom CSS for styling
 st.markdown(
@@ -90,39 +61,31 @@ st.header("ChatBot Demo")
 
 # Section for user input
 st.subheader("User Input")
-
-# Display the input text
-input_text1 = st.text_area("Chat Input:")
+input_text1 = st.text_area("Chat Input:", key='input_text_area')
 
 # Capture voice input on button click
 if st.button("Voice Command"):
-    voice_input = speech_to_text()
+    voice_input = u.speech_to_text()
     if voice_input:
         st.session_state["voice_input"] = voice_input
-        st.text("You: ")
-        st.text(voice_input)
+        st.text("You: " + voice_input)
 
 # Button to ask the question and store responses in session state
 if st.button("Send"):
-    # Ensure voice_input is fetched from session state
     voice_input = st.session_state.get("voice_input", "")
-    if input_text1:  # Check if user input text is not empty
-        response = get_gemini_response(input_text1)
-        st.session_state["response"] = response  # Update session state for response
-        st.text("You:")
-        st.text(input_text1)
-    elif voice_input:  # Check if voice input is not empty
-        response = get_gemini_response(voice_input)
-        st.session_state["response"] = response  # Update session state for response
-        st.text("You:")
-        st.text(voice_input)
+    if input_text1:
+        response = u.get_gemini_response(input_text1)
+        st.session_state["response"] = response
+        st.text("You: " + input_text1)
+    elif voice_input:
+        response = u.get_gemini_response(voice_input)
+        st.session_state["response"] = response
+        st.text("You: " + voice_input)
     else:
         st.warning("Please enter a question or use the microphone to ask a question.")
     
-    # Display chatbot response after checking for either input
     if "response" in st.session_state:
-        st.text("Chatbot:")
-        st.text(st.session_state["response"])
+        st.text("Chatbot: " + st.session_state["response"])
 
 # Section for Speak Response options
 st.subheader("Speak Response")
@@ -133,8 +96,73 @@ speak_response = st.checkbox("Speak Response")
 if st.button("Speak Response"):
     try:
         if speak_text_input:
-            text_to_speech(input_text1)  # Speak text input if checkbox is selected
+            u.text_to_speech(input_text1)
         if speak_response and "response" in st.session_state:
-            text_to_speech(st.session_state["response"])  # Speak response if checkbox is selected and exists
+            u.text_to_speech(st.session_state["response"])
     except Exception as e:
         st.error("An error occurred while converting text to speech. Please try again.")
+
+# Section for Three.js cube rendering
+st.subheader("3D Model Viewer")
+
+html_code = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Three.js Red Cube</title>
+  <style>
+    body { margin: 0; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // Create scene
+    const scene = new THREE.Scene();
+
+    // Set up camera
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 5;
+
+    // Set up renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Add lighting
+    const ambientLight = new THREE.AmbientLight(0x404040, 2); // soft white light
+    scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(5, 5, 5).normalize();
+    scene.add(directionalLight);
+
+    // Create a red cube
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const cube = new THREE.Mesh(geometry, material);
+    scene.add(cube);
+
+    // Animation loop
+    const animate = () => {
+      requestAnimationFrame(animate);
+      cube.rotation.x += 0.01;
+      cube.rotation.y += 0.01;
+      renderer.render(scene, camera);
+    };
+
+    animate();
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
+"""
+
+components.html(html_code, height=600)
