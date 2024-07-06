@@ -1,0 +1,13 @@
+prefix=D:/Accolade_chatbot/venv/Library
+exec_prefix=D:/Accolade_chatbot/venv/Library
+libdir=D:/Accolade_chatbot/venv/Library/lib
+sharedlibdir=D:/Accolade_chatbot/venv/Library/lib
+includedir=D:/Accolade_chatbot/venv/Library/include
+
+Name: zlib
+Description: zlib compression library
+Version: 1.2.13
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}
