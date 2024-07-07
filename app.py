@@ -6,6 +6,7 @@ import utils as u
 from PIL import Image
 from dotenv import load_dotenv
 import streamlit.components.v1 as components
+import google.generativeai as genai
 
 # Load environment variables
 load_dotenv()
